@@ -19,7 +19,7 @@ from sklearn.utils import class_weight
 from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers import Adam
 
-# SE ELIMINA LA IMPORTACIÓN DE MobileNetV2
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -32,7 +32,7 @@ emociones = [
 base_train = 'data/train'
 base_test = 'data/test'
 
-# 2) Detector MTCNN y función de recorte
+# 2) Detector MTCNN y función de recorte (Inicializa el modelo MTCNN que se usará para detectar caras en las imágenes.)
 detector = MTCNN()
 
 def detectar_y_recortar_cara(ruta_img,
@@ -66,7 +66,7 @@ def detectar_y_recortar_cara(ruta_img,
     return cv2.resize(roi, target_size)
 
 # 3) Preprocesa in-place todas las imágenes con MTCNN
-# Esta función modificará tus imágenes originales. Asegúrate de tener copias de seguridad si es necesario.
+# Esta función itera a través de los directorios de entrenamiento (base_train) para cada persona y emoción.
 def procesar_train():
     logging.info("Iniciando preprocesamiento de imágenes de entrenamiento...")
     for p in personas:
@@ -93,10 +93,7 @@ def procesar_train():
                     logging.info(f"No se pudo procesar la imagen (no se detectó cara o error): {ruta}")
     logging.info("Preprocesamiento de entrenamiento completado.")
 
-# Ejecuta el preprocesamiento de las imágenes de entrenamiento
-# ¡ADVERTENCIA! Si ya procesaste tus imágenes y no quieres sobrescribirlas,
-# o si ya ejecutas esto en un script separado, puedes comentar la siguiente línea:
-# procesar_train() # Descomentar para ejecutar el preprocesamiento
+
 
 # 4) Construye DataFrame con rutas y etiquetas
 logging.info("Construyendo DataFrame con rutas y etiquetas...")
@@ -114,7 +111,7 @@ for p in personas:
 df = pd.DataFrame({'filename': filepaths, 'class': labels})
 logging.info(f"DataFrame creado con {len(df)} entradas.")
 
-# 5) Split estratificado en train/val
+# 5) Split estratificado en train/val 
 logging.info("Realizando split estratificado de datos...")
 df_train, df_val = train_test_split(
     df, test_size=0.2,
@@ -150,7 +147,7 @@ val_gen = val_datagen.flow_from_dataframe(
     class_mode='categorical', shuffle=False
 )
 
-# 7) Cálculo de class_weight
+# 7) Cálculo de class_weight/ Calcula pesos para cada clase
 logging.info("Calculando pesos de clase...")
 weights = class_weight.compute_class_weight(
     'balanced',
@@ -160,11 +157,11 @@ weights = class_weight.compute_class_weight(
 class_weight_dict = dict(enumerate(weights))
 logging.info(f"Pesos de clase calculados: {class_weight_dict}")
 
-# ---- Definición de num_classes (Correcto) ----
+# ---- Definición de num_classes (numero de clases)  --
 num_classes = df['class'].nunique()
 logging.info(f"Número total de clases para el modelo: {num_classes}")
 
-# 8) Definición de la CNN (personalizada, SIN Transfer Learning)
+# 8) Definición de la CNN 
 logging.info("Definiendo el modelo CNN personalizado (desde cero)...")
 
 model = Sequential([

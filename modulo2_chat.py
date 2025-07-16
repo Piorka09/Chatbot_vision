@@ -251,7 +251,7 @@ def process_initial_photo():
 
     threading.Thread(target=run_initial_detection, args=(photo_path,)).start()
 
-def run_initial_detection(photo_path):
+def run_initial_detection(photo_path): #mensaje inicial cuando detecta una emocion
     global current_user, current_emotion
 
     try:
@@ -259,8 +259,8 @@ def run_initial_detection(photo_path):
         person, emotion, _ = predecir_emocion_y_persona(photo_path)
 
         if person and emotion:
-            current_user = person
-            current_emotion = emotion
+            current_user = person #persona
+            current_emotion = emotion #emocion
             display_message(f"¡Hola {current_user}! Te veo {current_emotion}. 😊", "system_msg")
 
 
@@ -374,7 +374,7 @@ def run_emotion_update(photo_path):
         chat_window.update_idletasks()
 
 
-def create_gui():
+def create_gui(): #Creacion de la interfaz (colores, diseño)
     global chat_window, chat_display, user_entry, send_button
     global initial_photo_path_entry, initial_photo_button, process_initial_button
     global update_emotion_photo_entry, update_emotion_button, progress_bar
