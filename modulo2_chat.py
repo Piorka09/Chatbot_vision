@@ -4,9 +4,9 @@ import datetime
 import tkinter as tk
 from tkinter import scrolledtext, filedialog, messagebox, ttk
 import threading
-import requests # Import the requests library for HTTP communication
-import json     # Import json for handling JSON data
-import time     # For potential delays or loading animations
+import requests # Permite que la aplicación haga solicitudes HTTP a APIs externas. Aquí se usa para hablar con el modelo Gemma 2B que se ejecuta localmente.
+import json     # codificar y decodificar datos en formato JSON
+import time     # pausas o animaciones de carga
 
 # Importar la función de predicción del módulo de visión
 try:
@@ -19,10 +19,8 @@ except ImportError:
 
 # --- Configuración para el SLM Gemma 2B ---
 # Define la URL de tu API local de Gemma 2B.
-# Si usas Ollama, por defecto suele ser http://localhost:11434/api/generate
-# Asegúrate de que tu modelo 'gemma2:2b' está disponible en Ollama.
 GEMMA_API_URL = "http://localhost:11434/api/generate"
-GEMMA_MODEL_NAME = "gemma2:2b" # El nombre del modelo que tienes en Ollama o tu servidor local
+GEMMA_MODEL_NAME = "gemma2:2b" # El nombre del modelo que se tiene en el servidor local
 
 # --- Base de Datos para Conversaciones del Chat ---
 DB_NAME = 'chat_history.db'
@@ -115,9 +113,7 @@ def get_gemma_response(user_message, current_prompt_context_text, conversation_h
     'conversation_history' es una lista de dicts con 'role' y 'content'.
     """
     
-    # We will build the *entire* prompt for Gemma in a single string,
-    # as the /api/generate endpoint works best with this for simpler models.
-    
+
     # Start with the core instructions and persona:
     combined_initial_prompt = (
         f"{user_prompts[current_user]['initial']} "
@@ -138,12 +134,12 @@ def get_gemma_response(user_message, current_prompt_context_text, conversation_h
             speaker_label = "Tú" if msg["role"] == "user" else "Agente"
             full_prompt_string += f"{speaker_label}: {msg['content']}\n"
     
-    # Add the current user's message and prompt Gemma to respond
+    
     full_prompt_string += f"\n\nTu mensaje actual: {user_message}\nAgente: "
 
     payload = {
         "model": GEMMA_MODEL_NAME,
-        "prompt": full_prompt_string, # IMPORTANT CHANGE: Use "prompt" key for /api/generate
+        "prompt": full_prompt_string, 
         "stream": False,
         "options": {
             "temperature": 0.7,   # Control randomness (0.0-1.0)
@@ -159,7 +155,7 @@ def get_gemma_response(user_message, current_prompt_context_text, conversation_h
         
         response_data = response.json()
         
-        # IMPORTANT CHANGE: For /api/generate, response is typically in 'response' key
+        
         if 'response' in response_data:
             return response_data['response'].strip()
         else:
@@ -177,7 +173,7 @@ def get_gemma_response(user_message, current_prompt_context_text, conversation_h
 
 
 # --- Funciones de la GUI ---
-def send_message_gui():
+def send_message_gui(): #o	Se activa cuando el usuario escribe un mensaje y presiona Enter o hace clic en "Enviar".
     global current_user, current_emotion
 
     user_input = user_entry.get().strip()
@@ -196,14 +192,12 @@ def send_message_gui():
 
     threading.Thread(target=process_chatbot_response, args=(user_input,)).start()
 
-def process_chatbot_response(user_input):
+def process_chatbot_response(user_input): #Recupera el historial de conversación para el SLM
     global current_user, current_emotion
 
     try:
         history_for_slm = get_conversation_history(current_user, limit=10)
         
-        # The full context string for the SLM is built inside get_gemma_response.
-        # We pass the current emotion context as a string.
         bot_response = get_gemma_response(user_input, user_prompts[current_user][current_emotion], history_for_slm)
         
         if bot_response.startswith("Error:"):
@@ -218,7 +212,7 @@ def process_chatbot_response(user_input):
         progress_bar.stop() # Stop progress bar
         user_entry.config(state=tk.NORMAL)
         send_button.config(state=tk.NORMAL)
-        chat_window.update_idletasks() # Update GUI immediately
+        chat_window.update_idletasks()
 
 
 def display_message(message, tag="default"):
@@ -261,20 +255,18 @@ def run_initial_detection(photo_path):
     global current_user, current_emotion
 
     try:
-        person, emotion = predecir_emocion_y_persona(photo_path)
+        # MODIFICACIÓN CLAVE: Captura los 3 valores devueltos, el tercero se ignora con '_'
+        person, emotion, _ = predecir_emocion_y_persona(photo_path)
 
         if person and emotion:
             current_user = person
             current_emotion = emotion
             display_message(f"¡Hola {current_user}! Te veo {current_emotion}. 😊", "system_msg")
 
-            # This initial message serves to "prime" the SLM for its role and the user's emotion.
-            # We save it to the database for historical context.
+
             initial_prime_message = "Estoy listo para iniciar la conversación. ¿Cómo puedo ayudarte o qué tienes en mente?"
             
-            # Save this "initial state" as if the user provided context and the agent acknowledged.
-            # This helps build the history for subsequent SLM calls.
-            # The 'user' speaker for this prompt means it's a piece of context provided by the "user side" of the application.
+   
             save_message(current_user, "user", f"El usuario {current_user} ha sido identificado con la emoción {current_emotion}.")
             save_message(current_user, "model", initial_prime_message) # Save the agent's acknowledgment
 
@@ -340,7 +332,8 @@ def run_emotion_update(photo_path):
     global current_user, current_emotion
 
     try:
-        _, new_emotion = predecir_emocion_y_persona(photo_path)
+        # MODIFICACIÓN CLAVE: Captura los 3 valores devueltos, el primero y el tercero se ignoran con '_'
+        _, new_emotion, _ = predecir_emocion_y_persona(photo_path)
 
         if new_emotion:
             if new_emotion != current_emotion:
@@ -394,14 +387,14 @@ def create_gui():
     chat_window.resizable(False, False)
     
     # --- Modern Color Palette ---
-    PRIMARY_COLOR = "#4A90E2"  # Blue for accents and buttons
+    PRIMARY_COLOR = "#4A90E2"   # Blue for accents and buttons
     SECONDARY_COLOR = "#F7F9FC" # Light background for frames
-    ACCENT_COLOR = "#6CC091"   # Green for agent messages
-    USER_COLOR = "#5D5C61"     # Darker gray for user messages
-    ERROR_COLOR = "#E74C3C"    # Red for errors
-    INFO_COLOR = "#8E9DAA"     # Muted gray for info
-    SYSTEM_COLOR = "#9B59B6"   # Purple for system messages
-    WINDOW_BG = "#E8EDF3"     # Very light blue-gray for main window background
+    ACCENT_COLOR = "#6CC091"    # Green for agent messages
+    USER_COLOR = "#5D5C61"      # Darker gray for user messages
+    ERROR_COLOR = "#E74C3C"     # Red for errors
+    INFO_COLOR = "#8E9DAA"      # Muted gray for info
+    SYSTEM_COLOR = "#9B59B6"    # Purple for system messages
+    WINDOW_BG = "#E8EDF3"      # Very light blue-gray for main window background
 
     chat_window.config(bg=WINDOW_BG)
 
